@@ -14,21 +14,21 @@ import range from 'lodash.range';
 
 export default class Table extends Component {
 
-	constructor() {
-		super();
+	constructor(props) {
+		super(props);
 	
 		this.generateRows = this.generateRows.bind(this);
 		this.generateBlocks = this.generateBlocks.bind(this);
 	
 		this.possible_combinations = [
-  	  [0, 3, 6],
-  	  [1, 4, 7],
-  	  [0, 1, 2],
-  	  [3, 4, 5],
-  	  [2, 5, 8],
-  	  [6, 7, 8],
-  	  [0, 4, 8],
-  	  [2, 4, 6]
+			[0, 3, 6],
+			[1, 4, 7],
+			[0, 1, 2],
+			[3, 4, 5],
+			[2, 5, 8],
+			[6, 7, 8],
+			[0, 4, 8],
+			[2, 4, 6]
 		];
 
 		this.ids = [
@@ -46,24 +46,32 @@ export default class Table extends Component {
 		this.state = {
 			moves: range(9).fill(''),
 			x_score: 0,
-			o_score: 0
+			o_score: 0,
 		}
+		this.new_game = false;
 
 	}
 
+	componentWillUnmount(){
+		console.log('unmounting');
+	}
 
 	componentDidMount() {
+		console.log('did mount on table.js');
 		this.props.pubnub.getMessage(this.props.channel, (msg) => {
 			console.log(msg);
 			let moves = this.state.moves;
 			let id = this.ids[msg.message.row_index][msg.message.index];
+			console.log(id);
 			moves[id] = msg.message.piece;
+			console.log(moves[id]);
 			
 			this.setState({
 				moves
 			});
 
 			this.updateScores.call(this, moves);
+			// this.onMakeMove(msg.message.row_index, msg.message.index)
         });
 
 		// //change
@@ -87,14 +95,17 @@ export default class Table extends Component {
 		}
 
 		function isInArray(moves, piece, element, index, array){
-		
+			console.log('moves[element]: ' + moves[element]);
 			return moves[element] && moves[element] == piece;
 		}
 
 		this.possible_combinations.forEach((p_row) => {
 			if(p_row.every(isInArray.bind(null, moves, 'X'))){
+				console.log('point to X');
+				this.new_game = true;
 				pieces['X'] += 1;
 			}else if(p_row.every(isInArray.bind(null, moves, 'O'))){
+				console.log('point to O');
 				pieces['O'] += 1;
 			}
 		});
@@ -114,10 +125,20 @@ export default class Table extends Component {
 					{this.generateRows()}
 				</View>
 
+				<View style={styles.scores_container}>
+					<View style={styles.score}>
+						<Text style={styles.user_score}>{this.state.x_score}</Text>
+						<Text style={styles.username}>{this.props.username} (x)</Text>
+					</View>
+					
+					<View style={styles.score}>
+						<Text style={styles.user_score}>{this.state.o_score}</Text>
+						<Text style={styles.username}>{this.props.rival_username} (o)</Text>
+					</View>
+				</View>				
 			</View>
 		);
 	}
-
 
 	generateRows() {
 		return this.rows.map((row, index) => {
@@ -128,7 +149,6 @@ export default class Table extends Component {
 			);
 		});
 	}
-
 
 	generateBlocks(row, row_index) {
 		return row.map((block, index) => {
@@ -155,6 +175,7 @@ export default class Table extends Component {
 	onMakeMove(row_index, index) {
 
 		let moves = this.state.moves;
+		// console.log(moves);
 		let id = this.ids[row_index][index];
 
 		if(!moves[id]){ // nobody has occupied the space yet
@@ -175,17 +196,19 @@ export default class Table extends Component {
 				},
 				channel: this.props.channel
 			})
-
-			// this.props.channel.trigger('client-make-move', {
-			// 	row_index: row_index,
-			// 	index: index,
-			// 	piece: this.props.piece
-			// });
-			
 		}
 
 		// alert the room creator if they want to restart the game or call it quits
-		if(this.props.is_room_creator && moves.indexOf('') == -1){
+		// if(this.props.is_room_creator && moves.indexOf('') === -1){
+			if(this.props.is_room_creator && this.new_game){
+			console.log('alert creator')
+			// this.props.pubnub.publish({
+			// 	message: {
+			// 		restart_game: "restart the game?"0
+			// 	},
+			// 	channel: this.props.channel
+			// })
+
 			Alert.alert(
 			  "Restart Game", 
 			  "Do you want to restart the game?",
@@ -193,6 +216,9 @@ export default class Table extends Component {
 			    {
 			      text: "Nope. Let's call it quits.", 
 			      onPress: () => {
+					this.props.pubnub.unsubscribe({
+						channels : [this.props.channel]
+					});
 			        this.setState({
 								moves: range(9).fill(''),
 								x_score: 0,
@@ -210,6 +236,7 @@ export default class Table extends Component {
 								x_score: 0,
 								o_score: 0
 							});
+							this.new_game = false;
 			      }  
 			    },
 			  ],
@@ -262,12 +289,3 @@ const styles = StyleSheet.create({
 	}
 });
 
-
-// Board.propTypes = {
-// 	channel: PropTypes.object, 
-// 	username: PropTypes.string,
-// 	piece: PropTypes.string,
-// 	rival_username: PropTypes.string,
-// 	is_room_creator: PropTypes.bool,
-// 	endGame: PropTypes.func.isRequired
-// }

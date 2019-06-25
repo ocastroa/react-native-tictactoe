@@ -14,7 +14,7 @@ import Table from './src/components/Table';
 import Lobby from './src/components/Lobby';
 // // import Board from './Board';
 import prompt from 'react-native-prompt-android';
-
+console.disableYellowBox = true;
 import shortid  from 'shortid';
 
 let room_id = 0;
@@ -41,72 +41,88 @@ export default class App extends Component {
   }
 
   componentWillUnmount(){
+    console.log('unmounting');
     this.pubnub.unsubscribe({
       channels : [this.channel]
-  });
+    });
+  }
+  
+  componentWillMount(){
+    this.pubnub.subscribe({
+      channels: ['gameLobby'],
+      withPresence: true
+    });
   }
 
   componentDidUpdate() {
-    if(this.state.is_waiting){
-      console.log('updating state');
-      let presenceUsers = 0;
-      this.pubnub.hereNow({
-        includeUUIDs: true,
-        includeState: true
-      },
-      function (status, response) {
-          // handle status, response
-          console.log(response);
-          presenceUsers = response.totalOccupancy;
-          console.log('presence users ' + presenceUsers);
-      });
-      if(presenceUsers < 2){
-        console.log("waiting for oponent");
-        this.setState({
-          is_waiting: false,
-          is_playing: true,
-          rival_username: 'john'
-          // rival_username: data.username
-        });
+    this.pubnub.getMessage('gameLobby', (msg) => {
+      console.log(msg);
+      if(msg.message.is_room_creator){
+        console.log('waiting for game to start');
+        console.log(this.state.is_playing);
       }
-      else if(presenceUsers === 2){
-        console.log('2 ppl');
-        this.setState({
-          is_waiting: false,
-          is_playing: true,
-          rival_username: 'john'
-          // rival_username: data.username
-        });
-      }
-      else if(presenceUsers > 2){
-        console.log("lobby full");
-      }
-        // this.updateUserCount();
-      }
-  }
-
-  // componentDidUpdate() {
-  //   if(this.state.is_waiting && !this.is_channel_binded){
+      else if(msg.message.not_room_creator){
+         console.log('starting game');
+          console.log(this.state.is_playing);
       
+          this.pubnub.unsubscribe({
+            channels : ['gameLobby']
+          }); 
+          console.log("unsub");
+          this.setState({
+            is_waiting: false,
+            is_playing: true,
+            rival_username: 'john'
+            // rival_username: data.username
+          });  
+          console.log(this.state.is_playing);          
+       } 
+     });
+    }
+    // this.pubnub.getMessage(this.channel, (msg) => {
+    //   if(msg.message.readyToPlay){
+    //     let presenceUsers = 0;
+    //     this.pubnub.hereNow({
+    //       includeUUIDs: true,
+    //       includeState: true
+    //   }).then((response) => { 
+    //       console.log(response) 
+    //       presenceUsers = response.totalOccupancy;
+    //       console.log('presence users ' + presenceUsers);
+    //       if(presenceUsers < 2){
+    //         //room creator
+    //         console.log("waiting for oponent");
+    //       }
+    //       else if(presenceUsers === 2){
+    //         console.log('2 ppl');
 
-  //     this.is_channel_binded = true;
+    //         this.setState({
+    //           is_waiting: false,
+    //           is_playing: true,
+    //           rival_username: 'john'
+    //           // rival_username: data.username
+    //         });
+    //       }
+    //       else if(presenceUsers > 2){
+    //         console.log("lobby full");
+    //         this.setState({
+    //           is_waiting: false,
+    //           is_playing: true,
+    //           rival_username: 'john'
+    //           // rival_username: data.username
+    //         });
+    //       }
+    //     }).catch((error) => { 
+    //         console.log(error) 
+    //     });  
 
-  //   }
+    //   }
+    // });
+    // if(this.state.is_waiting){
+        // this.updateUserCount();
+      // }
   // }
 
-  // onChangeUsername = (username) =>{
-  //   this.setState({username});
-  // }
-
-  // startGame = () => {
-  //   console.log("he");
-  //   this.setState({
-  //     is_waiting: false,
-  //     is_playing: true,
-  //     // rival_username: data.username
-  //   });
-  //   console.log(this.state.is_playing);
-  // }
 
   joinRoom = (room_id) => {
     this.channel = 'tictactoe--' + room_id;
@@ -120,37 +136,22 @@ export default class App extends Component {
       piece: 'O',
       // show_prompt: false,
       is_waiting: true
-    });     
-
-      // let presenceUsers = 0;
-      // this.pubnub.hereNow({
-      //   includeUUIDs: true,
-      //   includeState: true
-      // },
-      // function (status, response) {
-      //     // handle status, response
-      //     // console.log(status);
-      //     presenceUsers = response.totalOccupancy;
-      //     console.log('presence users ' + presenceUsers);
-
-      //     if(presenceUsers < 2){
-      //       console.log("waiting for oponent");
-      //     }
-      //     else if(presenceUsers === 2){
-      //       console.log('2 ppl');
-      //       this.startGame();
-      //     }
-      //     else if(presenceUsers > 2){
-      //       console.log("lobby full");
-      //     }
-      // });
-        // this.updateUserCount();
-      }
+    });  
+    
+    this.pubnub.publish({
+      message: {
+        readyToPlay: true,
+        not_room_creator: true
+      },
+      channel: 'gameLobby'
+    });
+  }
  
-
   onPressCreateRoom = () => {
-    // room_id = shortid.generate();
-    room_id = "bnm"
+    room_id = shortid.generate();
+    let strTemp = room_id.substring(0,4);
+    room_id = strTemp;
+    // room_id = "yeet"
     this.channel = 'tictactoe--' + room_id;
     console.log(this.channel);
     this.pubnub.subscribe({
@@ -174,6 +175,14 @@ export default class App extends Component {
       is_waiting: true,
       is_room_creator: true
     });
+
+    this.pubnub.publish({
+      message: {
+        readyToPlay: true,
+        is_room_creator: true
+      },
+      channel: 'gameLobby'
+    });
   }
 
   onPressJoinRoom = () => {
@@ -195,6 +204,22 @@ export default class App extends Component {
     }
   }
 
+  endGame = () => {
+    this.setState({
+      username: '',
+      piece: '',
+      rival_username: '',
+      is_playing: false,
+      is_waiting: false,
+      is_room_creator: false
+    });
+
+    this.channel = null;
+    this.pubnub.subscribe({
+      channels: ['gameLobby'],
+      withPresence: true
+    });
+  }
 
   render() {
     return (
@@ -204,7 +229,7 @@ export default class App extends Component {
         </View>
 
         {
-          !this.state.is_playing && !this.state.is_waiting &&
+          !this.state.is_playing &&
           <Lobby 
             username={this.state.name} 
             onPressCreateRoom={this.onPressCreateRoom} 
@@ -222,6 +247,7 @@ export default class App extends Component {
               piece={this.state.piece}
               rival_username={this.state.rival_username}
               is_room_creator={this.state.is_room_creator}
+              endGame={this.endGame}
             />
           }
 
@@ -229,6 +255,7 @@ export default class App extends Component {
     );
   }
 }
+// {"row_index":1,"index":0,"piece":"X"}
 
 const styles = StyleSheet.create({
   container: {
