@@ -15,6 +15,7 @@ import Lobby from './src/components/Lobby';
 import prompt from 'react-native-prompt-android';
 console.disableYellowBox = true;
 import shortid  from 'shortid';
+import Spinner from 'react-native-spinkit';
 
 let room_id = 0;
 
@@ -27,9 +28,9 @@ export default class App extends Component {
       subscribeKey: "sub-c-ed355780-93bd-11e9-9769-e24cdeae5ee1"
     });
     this.state = {
-      username: 'Oscar',
+      username: 'Player 1',
       piece: '',
-      rival_username: '',
+      rival_username: 'Player 2',
       is_playing: false,
       is_waiting: false,
       is_room_creator: false
@@ -71,7 +72,7 @@ export default class App extends Component {
           this.setState({
             is_waiting: false,
             is_playing: true,
-            rival_username: 'john'
+            rival_username: msg.message.rival_username
             // rival_username: data.username
           });  
           console.log(this.state.is_playing);          
@@ -122,6 +123,9 @@ export default class App extends Component {
       // }
   // }
 
+  onChangeUsername = (username) => {
+    this.setState({username});
+  }
 
   joinRoom = (room_id) => {
     this.channel = 'tictactoe--' + room_id;
@@ -140,7 +144,7 @@ export default class App extends Component {
     this.pubnub.publish({
       message: {
         readyToPlay: true,
-        not_room_creator: true
+        not_room_creator: true,
       },
       channel: 'gameLobby'
     });
@@ -227,10 +231,19 @@ export default class App extends Component {
           <Text style={styles.title}>RN Tic-Tac-Toe</Text>
         </View>
 
+        <Spinner 
+          style={styles.spinner} 
+          isVisible={this.state.is_waiting} 
+          size={75} 
+          type={"Circle"} 
+          color={'rgb(208,33,41)'}
+        />
+
         {
           !this.state.is_playing &&
           <Lobby 
             username={this.state.name} 
+            onChangeUsername={this.onChangeUsername}
             onPressCreateRoom={this.onPressCreateRoom} 
             onPressJoinRoom={this.onPressJoinRoom}
           />
@@ -254,13 +267,19 @@ export default class App extends Component {
     );
   }
 }
-// {"row_index":2,"index":2,"piece":"O","is_room_creator":false}
+// {"row_index":2,"index":2,"piece":"O","is_room_creator":false,"turn": "X"}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
     backgroundColor: '#F5FCFF',
+  },
+  spinner: {
+    flex: 1,
+    alignSelf: 'center',
+    marginTop: 20,
+    marginBottom: 50
   },
   title_container: {
     flex: 1,

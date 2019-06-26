@@ -48,6 +48,7 @@ export default class Table extends Component {
 			x_score: 0,
 			o_score: 0,
 		}
+		this.turn = 'X';
 		this.game_over = false;
 	}
 
@@ -59,7 +60,7 @@ export default class Table extends Component {
 		console.log('did mount on table.js');
 		this.props.pubnub.getMessage(this.props.channel, (msg) => {
 			console.log(msg);
-			if(!msg.message.room_creator){
+			if(!msg.message.room_creator && (msg.message.turn != msg.message.piece)){
 				let moves = this.state.moves;
 				let id = this.ids[msg.message.row_index][msg.message.index];
 				console.log(id);
@@ -69,8 +70,9 @@ export default class Table extends Component {
 				this.setState({
 					moves
 				});
-	
+
 				this.updateScores.call(this, moves);
+				this.turn = 'X';
 			}
 		});
 	}
@@ -95,6 +97,7 @@ export default class Table extends Component {
 								x_score: 0,
 								o_score: 0
 							});
+							this.turn = 'X';
 							this.props.endGame();
 			      },
 			      style: 'cancel'
@@ -105,6 +108,7 @@ export default class Table extends Component {
 							this.setState({
 								moves: range(9).fill('')
 							});
+							this.turn = 'X';
 							this.game_over = false;
 			      }  
 			    },
@@ -162,12 +166,12 @@ export default class Table extends Component {
 				<View style={styles.scores_container}>
 					<View style={styles.score}>
 						<Text style={styles.user_score}>{this.state.x_score}</Text>
-						<Text style={styles.username}>{this.props.username} (x)</Text>
+						<Text style={styles.username}>{this.props.username} (X)</Text>
 					</View>
 					
 					<View style={styles.score}>
 						<Text style={styles.user_score}>{this.state.o_score}</Text>
-						<Text style={styles.username}>{this.props.rival_username} (o)</Text>
+						<Text style={styles.username}>{this.props.rival_username} (O)</Text>
 					</View>
 				</View>				
 			</View>
@@ -190,7 +194,9 @@ export default class Table extends Component {
 			return (
 				<TouchableHighlight 
 					key={index} 
-					onPress={this.onMakeMove.bind(this, row_index, index)} 
+					onPress={
+						this.onMakeMove.bind(this, row_index, index)
+					} 
 					underlayColor={"#CCC"} 
 					style={styles.block}>
 
@@ -205,20 +211,19 @@ export default class Table extends Component {
 		});
 	}
 
-
 	onMakeMove(row_index, index) {
-
 		let moves = this.state.moves;
 		let id = this.ids[row_index][index];
 
-		if(!moves[id]){ // nobody has occupied the space yet
-		
+		if(!moves[id] && (this.turn === this.props.piece)){ // nobody has occupied the space yet
 			moves[id] = this.props.piece;
 			this.setState({
 				moves
 			});
 
 			this.updateScores.call(this, moves);
+			this.turn = (this.turn === 'X') ? 'O' : 'X';
+			console.log(this.turn);
 			
 			//rival has made move
 			this.props.pubnub.publish({
@@ -226,7 +231,8 @@ export default class Table extends Component {
 					row_index: row_index,
 					index: index,
 					piece: this.props.piece,
-					room_creator: this.props.is_room_creator
+					room_creator: this.props.is_room_creator,
+					turn: this.turn
 				},
 				channel: this.props.channel
 			});

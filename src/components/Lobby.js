@@ -21,7 +21,7 @@ export default class Lobby extends Component {
             style={styles.text_input}
             onChangeText={this.props.onChangeUsername}
             placeholder={"What's your name?"}
-            maxLength={20}
+            maxLength={15}
             value={this.props.username}
           />
         </View>
