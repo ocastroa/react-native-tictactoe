@@ -48,8 +48,7 @@ export default class Table extends Component {
 			x_score: 0,
 			o_score: 0,
 		}
-		this.new_game = false;
-
+		this.game_over = false;
 	}
 
 	componentWillUnmount(){
@@ -60,63 +59,98 @@ export default class Table extends Component {
 		console.log('did mount on table.js');
 		this.props.pubnub.getMessage(this.props.channel, (msg) => {
 			console.log(msg);
-			let moves = this.state.moves;
-			let id = this.ids[msg.message.row_index][msg.message.index];
-			console.log(id);
-			moves[id] = msg.message.piece;
-			console.log(moves[id]);
-			
+			if(!msg.message.room_creator){
+				let moves = this.state.moves;
+				let id = this.ids[msg.message.row_index][msg.message.index];
+				console.log(id);
+				moves[id] = msg.message.piece;
+				console.log(moves[id]);
+				
+				this.setState({
+					moves
+				});
+	
+				this.updateScores.call(this, moves);
+			}
+		});
+	}
+
+	new_game = () => {
+		console.log(this.props.is_room_creator);
+		if(this.props.is_room_creator && this.game_over){
+			console.log('alert creator')
+
+			Alert.alert(
+			  "Game Over!", 
+			  "Do you want to play another game?",
+			  [
+			    {
+			      text: "Nah", 
+			      onPress: () => {
+					this.props.pubnub.unsubscribe({
+						channels : [this.props.channel]
+					});
+			        this.setState({
+								moves: range(9).fill(''),
+								x_score: 0,
+								o_score: 0
+							});
+							this.props.endGame();
+			      },
+			      style: 'cancel'
+			    },
+			    {
+			      text: 'Yea', 
+			      onPress: () => {
+							this.setState({
+								moves: range(9).fill('')
+							});
+							this.game_over = false;
+			      }  
+			    },
+			  ],
+			  { cancelable: false } 
+			);
+		}
+	}
+
+	determineWinner = (winner) => {
+		var pieces = {
+			'X': this.state.x_score,
+			'O': this.state.o_score
+		}
+	
+		if(winner === 'X'){
+			console.log('winner is X');
+			pieces['X'] += 1;
+			console.log(pieces['X']);
 			this.setState({
-				moves
+				x_score: pieces['X']
 			});
-
-			this.updateScores.call(this, moves);
-			// this.onMakeMove(msg.message.row_index, msg.message.index)
-        });
-
-		// //change
-		// this.props.channel.bind('client-make-move', (data) => {
-		// 	let moves = this.state.moves;
-		// 	let id = this.ids[data.row_index][data.index];
-		// 	moves[id] = data.piece;
-			
-		// 	this.setState({
-		// 		moves
-		// 	});
-
-		// 	this.updateScores.call(this, moves);
-		// });
+		}
+		else{
+			console.log('point to O');
+			pieces['O'] += 1;
+			console.log(pieces['O']);
+			this.setState({
+				o_score: pieces['O']
+			});
+		}
+		this.game_over = true;
+		this.new_game();	
 	}
 
 	updateScores(moves) {
-		var pieces = {
-			'X': 0,
-			'O': 0
-		}
-
-		function isInArray(moves, piece, element, index, array){
-			console.log('moves[element]: ' + moves[element]);
-			return moves[element] && moves[element] == piece;
-		}
-
-		this.possible_combinations.forEach((p_row) => {
-			if(p_row.every(isInArray.bind(null, moves, 'X'))){
-				console.log('point to X');
-				this.new_game = true;
-				pieces['X'] += 1;
-			}else if(p_row.every(isInArray.bind(null, moves, 'O'))){
-				console.log('point to O');
-				pieces['O'] += 1;
+		for (let i = 0; i < this.possible_combinations.length; i++) {
+			const [a, b, c] = this.possible_combinations[i];
+			if (moves[a] && moves[a] === moves[b] && moves[a] === moves[c]) {
+				console.log(moves[a]);
+				this.determineWinner(moves[a]);	
+				break;
 			}
-		});
-
-		this.setState({
-			x_score: pieces['X'],
-			o_score: pieces['O']
-		});
-		
+			console.log('no winner');
+		}
 	}
-
 
 	render() {
 		return (
@@ -175,7 +209,6 @@ export default class Table extends Component {
 	onMakeMove(row_index, index) {
 
 		let moves = this.state.moves;
-		// console.log(moves);
 		let id = this.ids[row_index][index];
 
 		if(!moves[id]){ // nobody has occupied the space yet
@@ -192,59 +225,13 @@ export default class Table extends Component {
 				message: {
 					row_index: row_index,
 					index: index,
-					piece: this.props.piece
+					piece: this.props.piece,
+					room_creator: this.props.is_room_creator
 				},
 				channel: this.props.channel
-			})
-		}
-
-		// alert the room creator if they want to restart the game or call it quits
-		// if(this.props.is_room_creator && moves.indexOf('') === -1){
-			if(this.props.is_room_creator && this.new_game){
-			console.log('alert creator')
-			// this.props.pubnub.publish({
-			// 	message: {
-			// 		restart_game: "restart the game?"0
-			// 	},
-			// 	channel: this.props.channel
-			// })
-
-			Alert.alert(
-			  "Restart Game", 
-			  "Do you want to restart the game?",
-			  [
-			    {
-			      text: "Nope. Let's call it quits.", 
-			      onPress: () => {
-					this.props.pubnub.unsubscribe({
-						channels : [this.props.channel]
-					});
-			        this.setState({
-								moves: range(9).fill(''),
-								x_score: 0,
-								o_score: 0
-							});
-							this.props.endGame();
-			      },
-			      style: 'cancel'
-			    },
-			    {
-			      text: 'Heck yeah!', 
-			      onPress: () => {
-							this.setState({
-								moves: range(9).fill(''),
-								x_score: 0,
-								o_score: 0
-							});
-							this.new_game = false;
-			      }  
-			    },
-			  ],
-			  { cancelable: false } 
-			);
+			});
 		}
 	}
-
 }
 
 const styles = StyleSheet.create({

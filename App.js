@@ -12,7 +12,6 @@ import {
 
 import Table from './src/components/Table';
 import Lobby from './src/components/Lobby';
-// // import Board from './Board';
 import prompt from 'react-native-prompt-android';
 console.disableYellowBox = true;
 import shortid  from 'shortid';
@@ -255,7 +254,7 @@ export default class App extends Component {
     );
   }
 }
-// {"row_index":1,"index":0,"piece":"X"}
+// {"row_index":2,"index":2,"piece":"O","is_room_creator":false}
 
 const styles = StyleSheet.create({
   container: {
