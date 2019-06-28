@@ -1,7 +1,4 @@
 import React, { Component } from 'react';
-
-// import PropTypes from 'prop-types';
-
 import {
   StyleSheet,
   Text,
@@ -15,11 +12,7 @@ import range from 'lodash.range';
 export default class Table extends Component {
 
 	constructor(props) {
-		super(props);
-	
-		this.generateRows = this.generateRows.bind(this);
-		this.generateBlocks = this.generateBlocks.bind(this);
-	
+		super(props);	
 		this.possible_combinations = [
 			[0, 3, 6],
 			[1, 4, 7],
@@ -40,7 +33,7 @@ export default class Table extends Component {
 		this.rows = [
 			range(3).fill(''),
 			range(3).fill(''),
-			range(3).fill('')
+			range(3).fill(''),
 		];
 	
 		this.state = {
@@ -52,20 +45,14 @@ export default class Table extends Component {
 		this.game_over = false;
 	}
 
-	componentWillUnmount(){
-		console.log('unmounting');
-	}
-
 	componentDidMount() {
-		console.log('did mount on table.js');
+		// Listen for messages in the channel
 		this.props.pubnub.getMessage(this.props.channel, (msg) => {
-			console.log(msg);
-			if(!msg.message.room_creator && (msg.message.turn != msg.message.piece)){
+			// Add O's move to the table
+			if(msg.message.piece === 'O'){
 				let moves = this.state.moves;
 				let id = this.ids[msg.message.row_index][msg.message.index];
-				console.log(id);
 				moves[id] = msg.message.piece;
-				console.log(moves[id]);
 				
 				this.setState({
 					moves
@@ -78,10 +65,7 @@ export default class Table extends Component {
 	}
 
 	new_game = () => {
-		console.log(this.props.is_room_creator);
 		if(this.props.is_room_creator && this.game_over){
-			console.log('alert creator')
-
 			Alert.alert(
 			  "Game Over!", 
 			  "Do you want to play another game?",
@@ -93,23 +77,29 @@ export default class Table extends Component {
 						channels : [this.props.channel]
 					});
 			        this.setState({
-								moves: range(9).fill(''),
-								x_score: 0,
-								o_score: 0
-							});
-							this.turn = 'X';
-							this.props.endGame();
+						moves: range(9).fill(''),
+						x_score: 0,
+						o_score: 0
+					});
+					this.turn = 'X';
+					this.props.endGame();
 			      },
 			      style: 'cancel'
 			    },
 			    {
 			      text: 'Yea', 
 			      onPress: () => {
-							this.setState({
-								moves: range(9).fill('')
-							});
-							this.turn = 'X';
-							this.game_over = false;
+					this.setState({
+						moves: range(9).fill('')
+					});
+					this.turn = 'X';
+					this.game_over = false;
+					this.props.pubnub.publish({
+						message: {
+							restart: true
+						},
+						channel: this.props.channel
+					});
 			      }  
 			    },
 			  ],
@@ -124,27 +114,25 @@ export default class Table extends Component {
 			'O': this.state.o_score
 		}
 	
+		// Update score for the winner
 		if(winner === 'X'){
-			console.log('winner is X');
 			pieces['X'] += 1;
-			console.log(pieces['X']);
 			this.setState({
 				x_score: pieces['X']
 			});
 		}
 		else{
-			console.log('point to O');
 			pieces['O'] += 1;
-			console.log(pieces['O']);
 			this.setState({
 				o_score: pieces['O']
 			});
 		}
+		// End the game once there is a winner
 		this.game_over = true;
 		this.new_game();	
 	}
 
-	updateScores(moves) {
+	updateScores = (moves) => {
 		for (let i = 0; i < this.possible_combinations.length; i++) {
 			const [a, b, c] = this.possible_combinations[i];
 			if (moves[a] && moves[a] === moves[b] && moves[a] === moves[c]) {
@@ -152,8 +140,67 @@ export default class Table extends Component {
 				this.determineWinner(moves[a]);	
 				break;
 			}
-			console.log('no winner');
 		}
+	}
+
+	onMakeMove(row_index, index) {
+		let moves = this.state.moves;
+		let id = this.ids[row_index][index];
+
+		if(!moves[id] && (this.turn === this.props.piece)){ // nobody has occupied the space yet
+			moves[id] = this.props.piece;
+			this.setState({
+				moves
+			});
+
+			this.updateScores.call(this, moves);
+			this.turn = (this.turn === 'X') ? 'O' : 'X';
+			
+			//rival has made move
+			this.props.pubnub.publish({
+				message: {
+					row_index: row_index,
+					index: index,
+					piece: this.props.piece,
+					room_creator: this.props.is_room_creator,
+					turn: this.turn
+				},
+				channel: this.props.channel
+			});
+		}
+	}
+
+	generateRows = () => {
+		return this.rows.map((row, index) => {
+			return (
+				<View style={styles.row} key={index}>
+					{this.generateBlocks(row, index)}
+				</View>
+			);
+		});
+	}
+
+	generateBlocks = (row, row_index) => {
+		return row.map((block, index) => {
+			let id = this.ids[row_index][index];
+			return (
+				<TouchableHighlight 
+					key={index} 
+					onPress={
+						this.onMakeMove.bind(this, row_index, index)
+					} 
+					underlayColor={"#CCC"} 
+					style={styles.block}>
+
+					<Text style={styles.block_text}>
+						{
+							this.state.moves[id]
+						}
+					</Text>
+				
+				</TouchableHighlight>	
+			);
+		});
 	}
 
 	render() {
@@ -177,67 +224,6 @@ export default class Table extends Component {
 			</View>
 		);
 	}
-
-	generateRows() {
-		return this.rows.map((row, index) => {
-			return (
-				<View style={styles.row} key={index}>
-					{this.generateBlocks(row, index)}
-				</View>
-			);
-		});
-	}
-
-	generateBlocks(row, row_index) {
-		return row.map((block, index) => {
-			let id = this.ids[row_index][index];
-			return (
-				<TouchableHighlight 
-					key={index} 
-					onPress={
-						this.onMakeMove.bind(this, row_index, index)
-					} 
-					underlayColor={"#CCC"} 
-					style={styles.block}>
-
-					<Text style={styles.block_text}>
-						{
-							this.state.moves[id]
-						}
-					</Text>
-				
-				</TouchableHighlight>	
-			);
-		});
-	}
-
-	onMakeMove(row_index, index) {
-		let moves = this.state.moves;
-		let id = this.ids[row_index][index];
-
-		if(!moves[id] && (this.turn === this.props.piece)){ // nobody has occupied the space yet
-			moves[id] = this.props.piece;
-			this.setState({
-				moves
-			});
-
-			this.updateScores.call(this, moves);
-			this.turn = (this.turn === 'X') ? 'O' : 'X';
-			console.log(this.turn);
-			
-			//rival has made move
-			this.props.pubnub.publish({
-				message: {
-					row_index: row_index,
-					index: index,
-					piece: this.props.piece,
-					room_creator: this.props.is_room_creator,
-					turn: this.turn
-				},
-				channel: this.props.channel
-			});
-		}
-	}
 }
 
 const styles = StyleSheet.create({
@@ -246,7 +232,8 @@ const styles = StyleSheet.create({
 	},
 	board: {
 		flex: 7,
-		flexDirection: 'column'
+		flexDirection: 'column',
+		color: 'black'
 	},
 	row: {
 		flex: 1,
@@ -271,14 +258,15 @@ const styles = StyleSheet.create({
 	},
 	score: {
 		flex: 1,
-		alignItems: 'center'
+		alignItems: 'center',
 	},
 	user_score: {
 		fontSize: 25,
-		fontWeight: 'bold'
+		fontWeight: 'bold',
+		color: 'black'
 	},
 	username: {
-		fontSize: 20
+		fontSize: 20,
+		color: 'black'
 	}
 });
-

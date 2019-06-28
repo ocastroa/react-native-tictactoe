@@ -1,44 +1,65 @@
 import React, { Component } from 'react';
-
-import PropTypes from 'prop-types';
-
 import {
   StyleSheet,
   Text,
   View,
   TextInput,
-  Button
+  TouchableHighlight
 } from 'react-native';
 
 export default class Lobby extends Component {
+  constructor() {
+    super();
+    this.state = {
+        pressStatus: false,
+     };
+  }
+
+  onHideUnderlay = () => {
+    this.setState({ pressStatus: false });
+  }
+
+  onShowUnderlay = () => {
+    this.setState({ pressStatus: true });
+  }
 
   render() {
-
     return (        
       <View style={styles.content_container}>
         <View style={styles.input_container}>
           <TextInput
             style={styles.text_input}
             onChangeText={this.props.onChangeUsername}
-            placeholder={"What's your name?"}
+            placeholder={" Enter your username"}
             maxLength={15}
             value={this.props.username}
           />
         </View>
 
         <View style={styles.button_container}>
-          <Button
-            onPress={this.props.onPressCreateRoom}
-            title="Create Room"
-            color="#4c87ea"
-            style={styles.button}
-          />
-          <Button
-            onPress={this.props.onPressJoinRoom}
-            title="Join Room"
-            color="#1C1C1C"
-            style={styles.button}
-          />
+          <TouchableHighlight
+              activeOpacity={1}
+              underlayColor={'white'}
+              style={
+                this.state.pressStatus
+                    ? styles.buttonPressed
+                    : styles.buttonNotPressed
+              }
+                onHideUnderlay={this.onHideUnderlay}
+                onShowUnderlay={this.onShowUnderlay}
+                disabled={this.props.isDisabled}
+                onPress={this.props.onPressCreateRoom}
+              >
+                <Text
+                  style={
+                  this.state.pressStatus
+                      ? styles.cancelPressed
+                      : styles.cancelNotPressed
+                      }
+                  >
+                  Create Room
+                </Text>
+          </TouchableHighlight>
         </View>
       </View>
     );
@@ -50,11 +71,9 @@ const styles = StyleSheet.create({
     flex: 1
   },
   input_container: {
-    marginBottom: 20
+    marginBottom: 20,
   },
   button_container: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
     alignItems: 'center'
   },
   text_input: {
@@ -63,7 +82,29 @@ const styles = StyleSheet.create({
     borderColor: '#CCC', 
     borderWidth: 1
   },
-  button: {
-    flex: 1
-  }
+  buttonPressed:{
+    borderColor: 'rgb(208,33,41)',
+    borderWidth: 1,
+    padding: 10,
+    borderRadius: 5
+  },
+  buttonNotPressed: {
+    backgroundColor: 'rgb(208,33,41)',
+    borderColor: 'rgb(208,33,41)',
+    borderWidth: 1,
+    padding: 10,
+    borderRadius: 5
+  },
+  cancelPressed:{
+    color: 'rgb(208,33,41)',
+    fontSize: 16,
+    textAlign: 'center',
+    alignItems: 'center',
+  },
+  cancelNotPressed: {
+    color: 'white',
+    fontSize: 16,
+    textAlign: 'center',
+    alignItems: 'center',
+  },
 });
