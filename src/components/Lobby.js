@@ -11,16 +11,25 @@ export default class Lobby extends Component {
   constructor() {
     super();
     this.state = {
-        pressStatus: false,
+      pressCreateConfirm: false,
+      pressJoinConfirm: false
      };
   }
 
-  onHideUnderlay = () => {
-    this.setState({ pressStatus: false });
+  onHideUnderlayCreateButton = () => {
+    this.setState({ pressCreateConfirm: false });
   }
 
-  onShowUnderlay = () => {
-    this.setState({ pressStatus: true });
+  onShowUnderlayCreateButton = () => {
+    this.setState({ pressCreateConfirm: true });
+  }
+
+  onHideUnderlayJoinButton = () => {
+    this.setState({ pressJoinConfirm: false });
+  }
+
+  onShowUnderlayJoinButton = () => {
+    this.setState({ pressJoinConfirm: true });
   }
 
   render() {
@@ -36,30 +45,58 @@ export default class Lobby extends Component {
           />
         </View>
 
-        <View style={styles.button_container}>
-          <TouchableHighlight
+        <View style={styles.container}>
+          <View style={styles.buttonContainer}>
+            <TouchableHighlight
               activeOpacity={1}
               underlayColor={'white'}
               style={
-                this.state.pressStatus
+                this.state.pressCreateConfirm
                     ? styles.buttonPressed
                     : styles.buttonNotPressed
               }
-                onHideUnderlay={this.onHideUnderlay}
-                onShowUnderlay={this.onShowUnderlay}
+                onHideUnderlay={this.onHideUnderlayCreateButton}
+                onShowUnderlay={this.onShowUnderlayCreateButton}
                 disabled={this.props.isDisabled}
                 onPress={this.props.onPressCreateRoom}
               >
                 <Text
                   style={
-                  this.state.pressStatus
+                  this.state.pressCreateConfirm
                       ? styles.cancelPressed
                       : styles.cancelNotPressed
                       }
                   >
-                  Create Room
+                  Create
                 </Text>
-          </TouchableHighlight>
+            </TouchableHighlight>
+          </View>
+
+          <View style={styles.buttonBorder}/>
+            <View style={styles.buttonContainer}>
+                <TouchableHighlight
+                activeOpacity={1}
+                underlayColor={'white'}
+                style={
+                  this.state.pressJoinConfirm
+                      ? styles.buttonPressed
+                      : styles.buttonNotPressed
+                }
+                  onHideUnderlay={this.onHideUnderlayJoinButton}
+                  onShowUnderlay={this.onShowUnderlayJoinButton}
+                  onPress={this.props.onPressJoinRoom}
+                >
+                  <Text
+                    style={
+                    this.state.pressJoinConfirm
+                        ? styles.cancelPressed
+                        : styles.cancelNotPressed
+                        }
+                    >
+                    Join
+                  </Text>
+            </TouchableHighlight>
+          </View>
         </View>
       </View>
     );
@@ -68,13 +105,24 @@ export default class Lobby extends Component {
 
 const styles = StyleSheet.create({
   content_container: {
-    flex: 1
+    flex: 1,
   },
   input_container: {
     marginBottom: 20,
   },
-  button_container: {
-    alignItems: 'center'
+  container: {
+    flexDirection: 'row',
+    // marginBottom: 5,
+    paddingLeft: 11,
+    paddingRight: 11
+  },
+  buttonContainer: {
+    flex: 1,
+    textAlign: 'center',
+  },
+  buttonBorder: {
+    borderLeftWidth: 4,
+    borderLeftColor: 'white'
   },
   text_input: {
     backgroundColor: '#FFF',

@@ -45,27 +45,65 @@ export default class Table extends Component {
 		this.game_over = false;
 	}
 
+	componentWillUnmount(){
+		console.log('unmounting');
+	}
+
+	// {"restart":true}
 	componentDidMount() {
 		// Listen for messages in the channel
+		console.log(this.props.channel);
 		this.props.pubnub.getMessage(this.props.channel, (msg) => {
 			// Add O's move to the table
-			if(msg.message.piece === 'O'){
+			console.log(msg.message);
+			console.log(this.props.piece);
+			if(msg.message.turn === this.props.piece){
 				let moves = this.state.moves;
 				let id = this.ids[msg.message.row_index][msg.message.index];
+
 				moves[id] = msg.message.piece;
 				
 				this.setState({
 					moves
 				});
 
+				this.turn = msg.message.turn;
 				this.updateScores.call(this, moves);
+			}
+
+			if(msg.message.restart){
+				this.setState({
+					moves: range(9).fill('')
+				});
 				this.turn = 'X';
+				this.game_over = false;
+			}
+
+			if(msg.message.restart === false){
+				this.props.pubnub.unsubscribe({
+					channels : [this.props.channel]
+				});
+				this.setState({
+					moves: range(9).fill(''),
+					x_score: 0,
+					o_score: 0
+				});
+				this.turn = 'X';
+				this.props.endGame();
 			}
 		});
 	}
 
 	new_game = () => {
-		if(this.props.is_room_creator && this.game_over){
+		// Show this alert to the rival player
+		if((this.props.is_room_creator === false) && this.game_over){
+			Alert.alert('Game Over','Waiting for rematch...');
+			this.turn = 'X';
+			console.log(this.turn);
+		}
+
+		// Show this alert to the room creator
+		else if(this.props.is_room_creator && this.game_over){
 			Alert.alert(
 			  "Game Over!", 
 			  "Do you want to play another game?",
@@ -122,6 +160,7 @@ export default class Table extends Component {
 			});
 		}
 		else{
+			console.log('winner is O');
 			pieces['O'] += 1;
 			this.setState({
 				o_score: pieces['O']
@@ -146,27 +185,31 @@ export default class Table extends Component {
 	onMakeMove(row_index, index) {
 		let moves = this.state.moves;
 		let id = this.ids[row_index][index];
+		console.log("in onMakeMove");
 
+		console.log(this.turn);
 		if(!moves[id] && (this.turn === this.props.piece)){ // nobody has occupied the space yet
 			moves[id] = this.props.piece;
 			this.setState({
 				moves
 			});
 
-			this.updateScores.call(this, moves);
 			this.turn = (this.turn === 'X') ? 'O' : 'X';
+			console.log(this.turn);
 			
+			//{"row_index":0,"index":1,"piece":"O","is_room_creator":false,"turn":"X"}
 			//rival has made move
 			this.props.pubnub.publish({
 				message: {
 					row_index: row_index,
 					index: index,
 					piece: this.props.piece,
-					room_creator: this.props.is_room_creator,
+					is_room_creator: this.props.is_room_creator,
 					turn: this.turn
 				},
 				channel: this.props.channel
 			});
+			this.updateScores.call(this, moves);
 		}
 	}
 
@@ -213,12 +256,12 @@ export default class Table extends Component {
 				<View style={styles.scores_container}>
 					<View style={styles.score}>
 						<Text style={styles.user_score}>{this.state.x_score}</Text>
-						<Text style={styles.username}>{this.props.username} (X)</Text>
+						<Text style={styles.username}>{this.props.x_username} (X)</Text>
 					</View>
 					
 					<View style={styles.score}>
 						<Text style={styles.user_score}>{this.state.o_score}</Text>
-						<Text style={styles.username}>{this.props.rival_username} (O)</Text>
+						<Text style={styles.username}>{this.props.o_username} (O)</Text>
 					</View>
 				</View>				
 			</View>
@@ -249,7 +292,8 @@ const styles = StyleSheet.create({
 	},
 	block_text: {
 		fontSize: 30,
-		fontWeight: 'bold'
+		fontWeight: 'bold',
+		color: 'black'
 	},
 	scores_container: {
 		flex: 2,

@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import PubNubReact from 'pubnub-react';
 import {
+  Platform,
   StyleSheet,
   View,
   Alert,
@@ -11,6 +12,7 @@ import Table from './src/components/Table';
 import Lobby from './src/components/Lobby';
 import shortid  from 'shortid';
 import Spinner from 'react-native-spinkit';
+import prompt from 'react-native-prompt-android';
 console.disableYellowBox = true;
 
 export default class App extends Component {
@@ -23,11 +25,15 @@ export default class App extends Component {
 
     this.state = {
       username: '',
-      piece: 'X',
-      rival_username: 'Player 2',
+      piece: '',
+      // rival_username: 'Player 2',
+
+      x_username: 'Player 1',
+      o_username: 'Player 2',
+
       is_playing: false,
       is_waiting: false,
-      is_room_creator: true,
+      is_room_creator: false,
       isDisabled: false
     };
 
@@ -46,24 +52,49 @@ export default class App extends Component {
       channels: ['gameLobby'],
       withPresence: true
     });
-  }
 
-  componentDidUpdate() {
-    // Check if message arrived in the channel
     this.pubnub.getMessage('gameLobby', (msg) => {
       // Start the game when a user has joined the lobby
-      if(msg.message.not_room_creator){
+      console.log(msg);
+      console.log(msg.message.is_room_creator);
+      console.log(this.state.is_room_creator);
+      if(msg.message.is_room_creator){
+        if(msg.message.is_room_creator != this.state.is_room_creator){
+          console.log('hi');
+          this.setState({
+            x_username: msg.message.username
+          })
+        }        
+      }
+
+      else if(msg.message.not_room_creator){
+        console.log(msg.message.not_room_creator);
+        if(msg.message.not_room_creator === this.state.is_room_creator){
+          console.log('setting rival name');
           this.pubnub.unsubscribe({
             channels : ['gameLobby']
           }); 
           this.setState({
             is_waiting: false,
             is_playing: true,
-            rival_username: msg.message.username
+            x_username: this.state.username,
+            o_username: msg.message.username
           });  
-       } 
+        }
+        else{
+          console.log('not setting rival name');
+          this.pubnub.unsubscribe({
+            channels : ['gameLobby']
+          }); 
+          this.setState({
+            is_waiting: false,
+            is_playing: true,
+            o_username: this.state.username
+          });  
+         } 
+        }
      });
-    }
+  }
 
   onChangeUsername = (username) => {
     this.setState({username});
@@ -97,16 +128,75 @@ export default class App extends Component {
   
       // show loading state while waiting for someone to join the room
       this.setState({
+        piece: 'X',
+        is_room_creator: true,
         is_waiting: true,
         isDisabled: true
       });
   
       this.pubnub.publish({
         message: {
-          readyToPlay: true,
+          is_room_creator: true,
+          username: this.state.username
         },
         channel: 'gameLobby'
       });  
+    }
+  }
+
+  //{"is_room_creator":true, "username":"oscar"}
+  joinRoom = (room_id) => {
+    if(this.room_id === null){
+      console.log(room_id);
+      return;
+    }
+    this.channel = 'tictactoe--' + room_id;
+    this.pubnub.subscribe({
+      channels: [this.channel],
+      withPresence: true
+    });
+
+    console.log('joined room ' + this.channel);
+    this.setState({
+      piece: 'O',
+      is_waiting: true
+    });  
+    
+    this.pubnub.publish({
+      message: {
+        readyToPlay: true,
+        not_room_creator: true,
+        // is_room_creator: false,
+        username: this.state.username
+      },
+      channel: 'gameLobby'
+    });
+  }
+
+  // {"readyToPlay":true, "not_room_creator": true, "is_room_creator":false, "username":"oscar"}
+
+  onPressJoinRoom = () => {
+    if(this.state.username === ''){
+      Alert.alert('Error','Please enter a username');
+    }
+    else{
+      if (Platform.OS === "android" || Platform.OS === "ios" ) {
+        prompt(
+          'Enter the room name',
+          '',
+          [
+           {text: 'Cancel', onPress: () => console.log('Cancel Pressed'), style: 'cancel'},
+           {text: 'OK', onPress: (value) =>  
+           (value === '') ? '' : this.joinRoom(value) },
+          ],
+          {
+              type: 'default',
+              cancelable: false,
+              defaultValue: '',
+              placeholder: ''
+            }
+        );      
+      }  
     }
   }
 
@@ -148,6 +238,7 @@ export default class App extends Component {
             username={this.state.name} 
             onChangeUsername={this.onChangeUsername}
             onPressCreateRoom={this.onPressCreateRoom} 
+            onPressJoinRoom={this.onPressJoinRoom}
             isDisabled={this.state.isDisabled}
           />
         }
@@ -159,7 +250,8 @@ export default class App extends Component {
               channel={this.channel} 
               username={this.state.username} 
               piece={this.state.piece}
-              rival_username={this.state.rival_username}
+              x_username={this.state.x_username}
+              o_username={this.state.o_username}
               is_room_creator={this.state.is_room_creator}
               endGame={this.endGame}
             />
