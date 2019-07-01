@@ -45,18 +45,10 @@ export default class Table extends Component {
 		this.game_over = false;
 	}
 
-	componentWillUnmount(){
-		console.log('unmounting');
-	}
-
-	// {"restart":true}
 	componentDidMount() {
 		// Listen for messages in the channel
-		console.log(this.props.channel);
 		this.props.pubnub.getMessage(this.props.channel, (msg) => {
 			// Add O's move to the table
-			console.log(msg.message);
-			console.log(this.props.piece);
 			if(msg.message.turn === this.props.piece){
 				let moves = this.state.moves;
 				let id = this.ids[msg.message.row_index][msg.message.index];
@@ -99,7 +91,6 @@ export default class Table extends Component {
 		if((this.props.is_room_creator === false) && this.game_over){
 			Alert.alert('Game Over','Waiting for rematch...');
 			this.turn = 'X';
-			console.log(this.turn);
 		}
 
 		// Show this alert to the room creator
@@ -120,7 +111,13 @@ export default class Table extends Component {
 						o_score: 0
 					});
 					this.turn = 'X';
-					this.props.endGame();
+					this.props.pubnub.publish({
+						message: {
+							gameOver: true
+						},
+						channel: this.props.channel
+					});	
+					this.props.endGame();				
 			      },
 			      style: 'cancel'
 			    },
@@ -160,7 +157,6 @@ export default class Table extends Component {
 			});
 		}
 		else{
-			console.log('winner is O');
 			pieces['O'] += 1;
 			this.setState({
 				o_score: pieces['O']
@@ -175,7 +171,6 @@ export default class Table extends Component {
 		for (let i = 0; i < this.possible_combinations.length; i++) {
 			const [a, b, c] = this.possible_combinations[i];
 			if (moves[a] && moves[a] === moves[b] && moves[a] === moves[c]) {
-				console.log(moves[a]);
 				this.determineWinner(moves[a]);	
 				break;
 			}
@@ -185,9 +180,7 @@ export default class Table extends Component {
 	onMakeMove(row_index, index) {
 		let moves = this.state.moves;
 		let id = this.ids[row_index][index];
-		console.log("in onMakeMove");
 
-		console.log(this.turn);
 		if(!moves[id] && (this.turn === this.props.piece)){ // nobody has occupied the space yet
 			moves[id] = this.props.piece;
 			this.setState({
@@ -195,9 +188,7 @@ export default class Table extends Component {
 			});
 
 			this.turn = (this.turn === 'X') ? 'O' : 'X';
-			console.log(this.turn);
 			
-			//{"row_index":0,"index":1,"piece":"O","is_room_creator":false,"turn":"X"}
 			//rival has made move
 			this.props.pubnub.publish({
 				message: {

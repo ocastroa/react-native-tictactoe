@@ -26,11 +26,8 @@ export default class App extends Component {
     this.state = {
       username: '',
       piece: '',
-      // rival_username: 'Player 2',
-
       x_username: 'Player 1',
       o_username: 'Player 2',
-
       is_playing: false,
       is_waiting: false,
       is_room_creator: false,
@@ -43,7 +40,7 @@ export default class App extends Component {
 
   componentWillUnmount(){
     this.pubnub.unsubscribe({
-      channels : [this.channel]
+      channels : ['gameLobby', this.channel]
     });
   }
   
@@ -144,36 +141,43 @@ export default class App extends Component {
     }
   }
 
-  //{"is_room_creator":true, "username":"oscar"}
   joinRoom = (room_id) => {
-    if(this.room_id === null){
-      console.log(room_id);
-      return;
-    }
     this.channel = 'tictactoe--' + room_id;
-    this.pubnub.subscribe({
-      channels: [this.channel],
-      withPresence: true
-    });
 
-    console.log('joined room ' + this.channel);
-    this.setState({
-      piece: 'O',
-      is_waiting: true
-    });  
-    
-    this.pubnub.publish({
-      message: {
-        readyToPlay: true,
-        not_room_creator: true,
-        // is_room_creator: false,
-        username: this.state.username
-      },
-      channel: 'gameLobby'
+    // Check that lobby is not full
+    this.pubnub.hereNow({
+      channels: [this.channel], 
+    }).then((response) => { 
+        console.log(response);
+        if(response.totalOccupancy < 2){
+          console.log(response.totalOccupancy);
+          this.pubnub.subscribe({
+            channels: [this.channel],
+            withPresence: true
+          });
+          
+          console.log('joined room ' + this.channel);
+          this.setState({
+            piece: 'O',
+            is_waiting: true
+          });  
+          
+          this.pubnub.publish({
+            message: {
+              readyToPlay: true,
+              not_room_creator: true,
+              username: this.state.username
+            },
+            channel: 'gameLobby'
+          });
+        } 
+        else{
+          Alert.alert('Lobby full','Please enter another room name');
+        }
+    }).catch((error) => { 
+        console.log(error)
     });
   }
-
-  // {"readyToPlay":true, "not_room_creator": true, "is_room_creator":false, "username":"oscar"}
 
   onPressJoinRoom = () => {
     if(this.state.username === ''){
