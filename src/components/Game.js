@@ -9,7 +9,7 @@ import {
 
 import range from 'lodash.range';
 
-export default class Table extends Component {
+export default class Game extends Component {
 
 	constructor(props) {
 		super(props);	
@@ -42,106 +42,85 @@ export default class Table extends Component {
 			o_score: 0,
 		}
 		this.turn = 'X';
-		this.game_over = false;
+    this.game_over = false;
+    this.count = 0;
 	}
 
-	componentDidMount() {
-		// Listen for messages in the channel
-		this.props.pubnub.getMessage(this.props.channel, (msg) => {
-			// Add O's move to the table
-			if(msg.message.turn === this.props.piece){
-				let moves = this.state.moves;
-				let id = this.ids[msg.message.row_index][msg.message.index];
+  componentDidMount() {
+    // Listen for messages in the channel
+    this.props.pubnub.getMessage(this.props.channel, (msg) => {
+      // Add the other player's move to the table
+      if(msg.message.turn === this.props.piece){
+        let moves = this.state.moves;
+        let id = this.ids[msg.message.row][msg.message.col];
 
-				moves[id] = msg.message.piece;
-				
-				this.setState({
-					moves
-				});
+        moves[id] = msg.message.piece;
+        
+        this.setState({
+          moves
+        });
 
-				this.turn = msg.message.turn;
-				this.updateScores.call(this, moves);
-			}
+        this.turn = msg.message.turn;
+        this.updateScores.call(this, moves);
+      }
 
-			if(msg.message.restart){
-				this.setState({
-					moves: range(9).fill('')
-				});
-				this.turn = 'X';
-				this.game_over = false;
-			}
+      else if(msg.message.reset){
+        this.setState({
+          moves: range(9).fill('')
+        });
+        this.turn = 'X';
+        this.game_over = false;
+      }
 
-			if(msg.message.restart === false){
-				this.props.pubnub.unsubscribe({
-					channels : [this.props.channel]
-				});
-				this.setState({
-					moves: range(9).fill(''),
-					x_score: 0,
-					o_score: 0
-				});
-				this.turn = 'X';
-				this.props.endGame();
-			}
-		});
-	}
+      else if(msg.message.gameOver){
+        this.props.pubnub.unsubscribe({
+          channels : [this.props.channel]
+        });
+        this.props.endGame();
+      }
+    }); 
+  }
 
-	new_game = () => {
-		// Show this alert to the rival player
-		if((this.props.is_room_creator === false) && this.game_over){
-			Alert.alert('Game Over','Waiting for rematch...');
-			this.turn = 'X';
-		}
-
-		// Show this alert to the room creator
-		else if(this.props.is_room_creator && this.game_over){
-			Alert.alert(
-			  "Game Over!", 
-			  "Do you want to play another game?",
-			  [
-			    {
-			      text: "Nah", 
-			      onPress: () => {
-					this.props.pubnub.unsubscribe({
-						channels : [this.props.channel]
-					});
-			        this.setState({
-						moves: range(9).fill(''),
-						x_score: 0,
-						o_score: 0
-					});
-					this.turn = 'X';
-					this.props.pubnub.publish({
-						message: {
-							gameOver: true
-						},
-						channel: this.props.channel
-					});	
-					this.props.endGame();				
-			      },
-			      style: 'cancel'
-			    },
-			    {
-			      text: 'Yea', 
-			      onPress: () => {
-					this.setState({
-						moves: range(9).fill('')
-					});
-					this.turn = 'X';
-					this.game_over = false;
-					this.props.pubnub.publish({
-						message: {
-							restart: true
-						},
-						channel: this.props.channel
-					});
-			      }  
-			    },
-			  ],
-			  { cancelable: false } 
-			);
-		}
-	}
+  newGame = () => {
+    // Show this alert if the player is not the room creator
+    if((this.props.is_room_creator === false) && this.game_over){
+      Alert.alert('Game Over','Waiting to start a new round...');
+      this.turn = 'X'; // Set turn to X so Player O can't make a move
+    }
+    // Show this alert to the room creator
+    else if(this.props.is_room_creator && this.game_over){
+      Alert.alert(
+        "Game Over!", 
+        "Do you want to play another round?",
+        [
+          {
+            text: "Nah", 
+            onPress: () => {
+              this.props.pubnub.publish({
+                message: {
+                  gameOver: true
+                },
+                channel: this.props.channel
+              });	
+            },
+            style: 'cancel'
+          },
+          {
+            text: 'Yea', 
+            onPress: () => {
+              this.props.pubnub.publish({
+                message: {
+                  reset: true
+                },
+                channel: this.props.channel
+              });
+            }  
+          },
+        ],
+        { cancelable: false } 
+      );
+    }
+  }
 
 	determineWinner = (winner) => {
 		var pieces = {
@@ -164,7 +143,7 @@ export default class Table extends Component {
 		}
 		// End the game once there is a winner
 		this.game_over = true;
-		this.new_game();	
+		this.newGame();	
 	}
 
 	updateScores = (moves) => {
@@ -174,54 +153,64 @@ export default class Table extends Component {
 				this.determineWinner(moves[a]);	
 				break;
 			}
-		}
+    }
+    
+    this.count++;
+    // Check if the game ends in a draw
+    if(this.count === 9){
+      this.game_over = true;
+      this.newGame();
+    }
 	}
 
-	onMakeMove(row_index, index) {
+	onMakeMove(row_index, col_index) {
 		let moves = this.state.moves;
-		let id = this.ids[row_index][index];
+		let id = this.ids[row_index][col_index];
 
-		if(!moves[id] && (this.turn === this.props.piece)){ // nobody has occupied the space yet
+    // the square is empty
+		if(!moves[id] && (this.turn === this.props.piece)){ 
 			moves[id] = this.props.piece;
+			
 			this.setState({
 				moves
 			});
 
+      // Change the turn so the next player can make a move
 			this.turn = (this.turn === 'X') ? 'O' : 'X';
 			
 			//rival has made move
 			this.props.pubnub.publish({
 				message: {
-					row_index: row_index,
-					index: index,
+					row: row_index,
+					col: col_index,
 					piece: this.props.piece,
 					is_room_creator: this.props.is_room_creator,
 					turn: this.turn
 				},
 				channel: this.props.channel
-			});
+      });
 			this.updateScores.call(this, moves);
 		}
 	}
 
 	generateRows = () => {
-		return this.rows.map((row, index) => {
+		return this.rows.map((row, col_index) => {
 			return (
-				<View style={styles.row} key={index}>
-					{this.generateBlocks(row, index)}
+				<View style={styles.row} key={col_index}>
+					{this.generateBlocks(row, col_index)}
 				</View>
 			);
 		});
 	}
 
 	generateBlocks = (row, row_index) => {
-		return row.map((block, index) => {
-			let id = this.ids[row_index][index];
+		return row.map((block, col_index) => {
+			let id = this.ids[row_index][col_index];
 			return (
 				<TouchableHighlight 
-					key={index} 
+					key={col_index} 
 					onPress={
-						this.onMakeMove.bind(this, row_index, index)
+						this.onMakeMove.bind(this, row_index, col_index)
 					} 
 					underlayColor={"#CCC"} 
 					style={styles.block}>
@@ -239,8 +228,8 @@ export default class Table extends Component {
 
 	render() {
 		return (
-			<View style={styles.board_container}>
-				<View style={styles.board}>
+			<View style={styles.table_container}>
+				<View style={styles.table}>
 					{this.generateRows()}
 				</View>
 
@@ -261,10 +250,10 @@ export default class Table extends Component {
 }
 
 const styles = StyleSheet.create({
-	board_container: {
+	table_container: {
 		flex: 9
 	},
-	board: {
+	table: {
 		flex: 7,
 		flexDirection: 'column',
 		color: 'black'

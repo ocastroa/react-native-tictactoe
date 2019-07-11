@@ -8,7 +8,7 @@ import {
   Text,
 } from 'react-native';
 
-import Table from './src/components/Table';
+import Game from './src/components/Game';
 import Lobby from './src/components/Lobby';
 import shortid  from 'shortid';
 import Spinner from 'react-native-spinkit';
@@ -19,15 +19,15 @@ export default class App extends Component {
   constructor(props) {
     super(props);
     this.pubnub = new PubNubReact({
-      publishKey: "pub-c-fc3066d1-e616-4a54-902b-1802388fdeaf",
-      subscribeKey: "sub-c-ed355780-93bd-11e9-9769-e24cdeae5ee1"
+      publishKey: "ENTER_YOUR_PUBLISH_KEY_HERE", 
+      subscribeKey: "ENTER_YOUR_SUBSCRIBE_KEY_HERE"    
     });
 
     this.state = {
       username: '',
       piece: '',
-      x_username: 'Player 1',
-      o_username: 'Player 2',
+      x_username: '',
+      o_username: '',
       is_playing: false,
       is_waiting: false,
       is_room_creator: false,
@@ -38,59 +38,36 @@ export default class App extends Component {
     this.pubnub.init(this);
   }
 
-  componentWillUnmount(){
+  componentWillUnmount() {
     this.pubnub.unsubscribe({
       channels : ['gameLobby', this.channel]
     });
   }
   
-  componentWillMount(){
+  componentDidMount() {
     this.pubnub.subscribe({
       channels: ['gameLobby'],
       withPresence: true
     });
 
     this.pubnub.getMessage('gameLobby', (msg) => {
-      // Start the game when a user has joined the lobby
-      console.log(msg);
-      console.log(msg.message.is_room_creator);
-      console.log(this.state.is_room_creator);
+      // Set username for Player X
       if(msg.message.is_room_creator){
-        if(msg.message.is_room_creator != this.state.is_room_creator){
-          console.log('hi');
-          this.setState({
-            x_username: msg.message.username
-          })
-        }        
+        this.setState({
+          x_username: msg.message.username
+        })
       }
-
       else if(msg.message.not_room_creator){
-        console.log(msg.message.not_room_creator);
-        if(msg.message.not_room_creator === this.state.is_room_creator){
-          console.log('setting rival name');
-          this.pubnub.unsubscribe({
-            channels : ['gameLobby']
-          }); 
-          this.setState({
-            is_waiting: false,
-            is_playing: true,
-            x_username: this.state.username,
-            o_username: msg.message.username
-          });  
-        }
-        else{
-          console.log('not setting rival name');
-          this.pubnub.unsubscribe({
-            channels : ['gameLobby']
-          }); 
-          this.setState({
-            is_waiting: false,
-            is_playing: true,
-            o_username: this.state.username
-          });  
-         } 
-        }
-     });
+        this.pubnub.unsubscribe({
+          channels : ['gameLobby']
+        }); 
+        this.setState({
+          o_username: msg.message.username,
+          is_waiting: false,
+          is_playing: true
+        });  
+      }
+    });
   }
 
   onChangeUsername = (username) => {
@@ -101,7 +78,6 @@ export default class App extends Component {
     if(this.state.username === ''){
       Alert.alert('Error','Please enter a username');
     }
-
     else{
       // Random channel name generated
       let roomId = shortid.generate();
@@ -113,7 +89,7 @@ export default class App extends Component {
         withPresence: true
       });
   
-      // alert the user of the ID that the friend needs to enter 
+      // alert the room creator to share the room ID with their friend
       Alert.alert(
         'Share this room ID with your friend',
         roomId,
@@ -123,14 +99,14 @@ export default class App extends Component {
         { cancelable: false }
       );
   
-      // show loading state while waiting for someone to join the room
+      // show the Spinner component while waiting for someone to join the room
       this.setState({
         piece: 'X',
         is_room_creator: true,
         is_waiting: true,
         isDisabled: true
       });
-  
+
       this.pubnub.publish({
         message: {
           is_room_creator: true,
@@ -143,37 +119,41 @@ export default class App extends Component {
 
   joinRoom = (room_id) => {
     this.channel = 'tictactoe--' + room_id;
-
-    // Check that lobby is not full
+    this.pubnub.subscribe({
+      channels: [this.channel],
+      withPresence: true
+    });
+    
+    // Check that the lobby is not full
     this.pubnub.hereNow({
       channels: [this.channel], 
     }).then((response) => { 
-        console.log(response);
-        if(response.totalOccupancy < 2){
-          console.log(response.totalOccupancy);
-          this.pubnub.subscribe({
-            channels: [this.channel],
-            withPresence: true
-          });
-          
-          console.log('joined room ' + this.channel);
-          this.setState({
-            piece: 'O',
-            is_waiting: true
-          });  
-          
-          this.pubnub.publish({
-            message: {
-              readyToPlay: true,
-              not_room_creator: true,
-              username: this.state.username
-            },
-            channel: 'gameLobby'
-          });
-        } 
-        else{
-          Alert.alert('Lobby full','Please enter another room name');
-        }
+      // If totalOccupancy is less than or equal to 1, then player can't join a room since it has not been created
+      if(response.totalOccupancy <= 1){
+        Alert.alert('Lobby is empty','Please create a room or wait for someone to create a room to join.');
+      }
+      else if(response.totalOccupancy === 2){
+        this.pubnub.subscribe({
+          channels: [this.channel],
+          withPresence: true
+        });
+        
+        this.setState({
+          piece: 'O',
+        });  
+        
+        this.pubnub.publish({
+          message: {
+            readyToPlay: true,
+            not_room_creator: true,
+            username: this.state.username
+          },
+          channel: 'gameLobby'
+        });
+      } 
+      else{
+        Alert.alert('Room full','Please enter another room name');
+      }
     }).catch((error) => { 
         console.log(error)
     });
@@ -184,14 +164,15 @@ export default class App extends Component {
       Alert.alert('Error','Please enter a username');
     }
     else{
-      if (Platform.OS === "android" || Platform.OS === "ios" ) {
+      // Check for platform
+      if (Platform.OS === "android") {
         prompt(
           'Enter the room name',
           '',
           [
            {text: 'Cancel', onPress: () => console.log('Cancel Pressed'), style: 'cancel'},
            {text: 'OK', onPress: (value) =>  
-           (value === '') ? '' : this.joinRoom(value) },
+           (value === '') ? '' : this.joinRoom(value)},
           ],
           {
               type: 'default',
@@ -200,10 +181,23 @@ export default class App extends Component {
               placeholder: ''
             }
         );      
+      }
+      else{
+        Alert.prompt(
+          'Enter the room name',
+          '',
+          [
+           {text: 'Cancel', onPress: () => console.log('Cancel Pressed'), style: 'cancel'},
+           {text: 'OK', onPress: (value) =>  
+           (value === '') ? '' : this.joinRoom(value)},
+          ],
+          'plain-text',
+        );
       }  
     }
   }
 
+  // Reset everything
   endGame = () => {
     this.setState({
       username: '',
@@ -249,7 +243,7 @@ export default class App extends Component {
       
         {
             this.state.is_playing &&
-            <Table 
+            <Game 
               pubnub={this.pubnub}
               channel={this.channel} 
               username={this.state.username} 
@@ -279,7 +273,7 @@ const styles = StyleSheet.create({
   },
   title_container: {
     flex: 1,
-    marginTop: 15
+    marginTop: 18
   },
   title: {
     alignSelf: 'center',
