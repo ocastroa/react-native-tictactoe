@@ -7,7 +7,8 @@ import {
   Alert
 } from 'react-native';
 
-import range from 'lodash.range';
+import range from 'lodash';
+const _ = range;
 
 export default class Game extends Component {
 
@@ -31,13 +32,13 @@ export default class Game extends Component {
 		];
 
 		this.rows = [
-			range(3).fill(''),
-			range(3).fill(''),
-			range(3).fill(''),
+			_.range(3).fill(''),
+			_.range(3).fill(''),
+			_.range(3).fill(''),
 		];
 	
 		this.state = {
-			moves: range(9).fill(''),
+			moves: _.range(9).fill(''),
 			x_score: 0,
 			o_score: 0,
 		}
@@ -66,7 +67,7 @@ export default class Game extends Component {
 
       else if(msg.message.reset){
         this.setState({
-          moves: range(9).fill('')
+          moves: _.range(9).fill('')
         });
         this.turn = 'X';
         this.game_over = false;

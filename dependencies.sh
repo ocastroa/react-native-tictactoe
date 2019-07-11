@@ -1,7 +1,7 @@
 # dependencies.sh
 npm install --save pubnub pubnub-react
-npm install react-native-prompt-android –save
-npm install react-native-spinkit –save
-npm install shortid –save
-npm install lodash.range –save
+npm install --save react-native-prompt-android
+npm install --save react-native-spinkit
+npm install --save shortid
+npm install --save lodash
 react-native link
