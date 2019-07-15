@@ -22,7 +22,7 @@ export default class App extends Component {
       publishKey: "ENTER_YOUR_PUBLISH_KEY_HERE", 
       subscribeKey: "ENTER_YOUR_SUBSCRIBE_KEY_HERE"    
     });
-
+    
     this.state = {
       username: '',
       piece: '',
