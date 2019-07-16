@@ -119,11 +119,7 @@ export default class App extends Component {
 
   joinRoom = (room_id) => {
     this.channel = 'tictactoe--' + room_id;
-    this.pubnub.subscribe({
-      channels: [this.channel],
-      withPresence: true
-    });
-    
+ 
     // Check that the lobby is not full
     this.pubnub.hereNow({
       channels: [this.channel], 
