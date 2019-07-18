@@ -119,11 +119,19 @@ export default class App extends Component {
 
   joinRoom = (room_id) => {
     this.channel = 'tictactoe--' + room_id;
-    this.pubnub.subscribe({
-      channels: [this.channel],
-      withPresence: true
-    });
+    this.setState({
+      piece: 'O',
+    });  
     
+    this.pubnub.publish({
+      message: {
+        readyToPlay: true,
+        not_room_creator: true,
+        username: this.state.username
+      },
+      channel: 'gameLobby'
+    });
+
     // Check that the lobby is not full
     this.pubnub.hereNow({
       channels: [this.channel], 
@@ -201,9 +209,12 @@ export default class App extends Component {
   endGame = () => {
     this.setState({
       username: '',
-      rival_username: '',
+      piece: '',
+      x_username: '',
+      o_username: '',
       is_playing: false,
       is_waiting: false,
+      is_room_creator: false,
       isDisabled: false
     });
 

@@ -1,10 +1,10 @@
 import React, { Component } from 'react';
 import {
-  StyleSheet,
-  Text,
-  View,
-  TouchableHighlight,
-  Alert
+StyleSheet,
+Text,
+View,
+TouchableHighlight,
+Alert
 } from 'react-native';
 
 import range from 'lodash';
@@ -12,40 +12,40 @@ const _ = range;
 
 export default class Game extends Component {
 
-	constructor(props) {
-		super(props);	
-		this.possible_combinations = [
-			[0, 3, 6],
-			[1, 4, 7],
-			[0, 1, 2],
-			[3, 4, 5],
-			[2, 5, 8],
-			[6, 7, 8],
-			[0, 4, 8],
-			[2, 4, 6]
-		];
+constructor(props) {
+  super(props);	
+  this.possible_combinations = [
+    [0, 3, 6],
+    [1, 4, 7],
+    [0, 1, 2],
+    [3, 4, 5],
+    [2, 5, 8],
+    [6, 7, 8],
+    [0, 4, 8],
+    [2, 4, 6]
+  ];
 
-		this.ids = [
-			[0, 1, 2],
-			[3, 4, 5],
-			[6, 7, 8]
-		];
+  this.ids = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8]
+  ];
 
-		this.rows = [
-			_.range(3).fill(''),
-			_.range(3).fill(''),
-			_.range(3).fill(''),
-		];
-	
-		this.state = {
-			moves: _.range(9).fill(''),
-			x_score: 0,
-			o_score: 0,
-		}
-		this.turn = 'X';
-    this.game_over = false;
-    this.count = 0;
-	}
+  this.rows = [
+    _.range(3).fill(''),
+    _.range(3).fill(''),
+    _.range(3).fill(''),
+  ];
+
+  this.state = {
+    moves: _.range(9).fill(''),
+    x_score: 0,
+    o_score: 0,
+  }
+  this.turn = 'X';
+  this.game_over = false;
+  this.count = 0;
+}
 
   componentDidMount() {
     // Listen for messages in the channel
@@ -71,6 +71,7 @@ export default class Game extends Component {
         });
         this.turn = 'X';
         this.game_over = false;
+        this.count = 0;
       }
 
       else if(msg.message.gameOver){
