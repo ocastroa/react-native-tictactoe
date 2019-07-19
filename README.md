@@ -44,7 +44,7 @@ react-native run-android
 
 8) There are two ways to test the app without having to open up another simulator/emulator. You can use PubNub's debug console or a React tic tac toe app:
     1) The debug console is used to create a game channel and the simulator/emulator is used to connect to that game channel. The game starts once both players are connected to the same game channel. Since the debug console was used to create the room, the first move is made in the debug console, followed by the simulator/emulator. The game ends once there is a winner or a draw. To learn how to test the app using the debug console, watch [this video](https://www.youtube.com/watch?v=i0DEuosFV0k).
-    2) The React app is already connected to the React Native app and is ready to play. To get started, clone the React App from the repo:
+    2) The React app is already connected to the React Native app and is ready to play. To get started, clone the React App from the [repo](https://github.com/ocastroa/react-tutorial-tic-tac-toe):
     ```bash
     git clone https://github.com/ocastroa/react-tutorial-tic-tac-toe.git
     ```
