@@ -8,7 +8,7 @@ A React Native game that lets players play Tic Tac Toe against each other in thi
 
 ## Setup
 1) First things first, sign up for a free PubNub account to get your Pub/Sub API keys.
- <a href="https://dashboard.pubnub.com/signup?devrel_gh=React_Native_TicTacToe">
+ <a href="https://dashboard.pubnub.com/signup?devrel_gh=react-native-tictactoe">
     <img alt="PubNub Signup" src="https://i.imgur.com/og5DDjf.png" width=260 height=97/>
   </a>
 
@@ -61,8 +61,8 @@ react-native run-android
 
 ## Build Your Own Realtime Tic Tac Toe Game in React Native
 
-To learn more about this project or if you want to build this project from scratch, check out the tutorial (coming soon).
+To learn more about this project or if you want to build this project from scratch, check out the tutorial.
 
-  <a href="https://www.pubnub.com/blog?devrel_gh=React_Native_TicTacToe">
+  <a href="https://www.pubnub.com/blog/multiplayer-mobile-tic-tac-toe-react-native-ios-android-part-one/?devrel_gh=react-native-tictactoe">
     <img alt="PubNub Blog" src="https://i.imgur.com/aJ927CO.png" width=260 height=98/>
   </a>
