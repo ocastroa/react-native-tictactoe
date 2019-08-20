@@ -1,6 +1,6 @@
 # Realtime Tic Tac Toe Game in React Native 
 
-A React Native game that lets players play Tic Tac Toe against each other in this classic childhood game. Any moves the player makes will be seen in realtime by the other player, no matter where they are in the world! [PubNub's React SDK](https://www.pubnub.com/docs/react-native-javascript/pubnub-javascript-sdk) is used to power the realtime infrastructure of the game and to provide a shared connected experience for the players. 
+A React Native game that lets players play Tic Tac Toe against each other in this classic childhood game. Any moves the player makes will be seen in realtime by the other player, no matter where they are in the world! [PubNub's React SDK](https://www.pubnub.com/docs/react-native-javascript/pubnub-javascript-sdk) is used to power the realtime infrastructure of the game and to provide a connected shared experience for the players. 
 
 <p align="center">
   <img src="./media/android-ios-game.png " alt="ios/android screenshot of the game" width="410" height="410" />
